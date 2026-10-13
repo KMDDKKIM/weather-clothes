@@ -406,41 +406,47 @@ h2 {
 
 .wardrobe-row {
   display: grid;
-  grid-template-columns: 76px 1fr;
+  grid-template-columns: 56px 1fr;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   background: var(--card);
   border-radius: 14px;
-  padding: 10px 12px;
-}
-
-.wardrobe-label {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--muted);
-  text-align: center;
-  word-break: keep-all;
+  padding: 12px 14px;
 }
 
 .wardrobe-emoji {
-  font-size: 28px;
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  font-size: 32px;
 }
 
-.tags {
+.wardrobe-main {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
 }
 
-.tag {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 5px 11px;
-  font-size: 14px;
+.wardrobe-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.wardrobe-pick {
+  font-size: 19px;
+  font-weight: 800;
+  word-break: keep-all;
+}
+
+.wardrobe-alt {
+  font-size: 13px;
+  color: var(--muted);
+  word-break: keep-all;
 }
 
 /* 색 조합 */
