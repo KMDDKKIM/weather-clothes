@@ -249,21 +249,22 @@ export default function App() {
           <section className="card hero">
             <p className="headline">{plan.headline}</p>
             <div className="wardrobe">
-              {wardrobe.map(({ category, label, options }) => (
-                <div key={category} className="wardrobe-row">
-                  <span className="wardrobe-label">
-                    <span className="wardrobe-emoji">{options[0].emoji}</span>
-                    {label}
-                  </span>
-                  <div className="tags">
-                    {options.map((o) => (
-                      <span key={o.id} className="tag">
-                        {o.name}
-                      </span>
-                    ))}
+              {wardrobe.map(({ category, label, options }) => {
+                // 가장 잘 맞는 옷은 그림과 함께 크게, 나머지는 대안으로 작게
+                const [best, ...others] = options
+                return (
+                  <div key={category} className="wardrobe-row">
+                    <span className="wardrobe-emoji">{best.emoji}</span>
+                    <div className="wardrobe-main">
+                      <span className="wardrobe-label">{label}</span>
+                      <strong className="wardrobe-pick">{best.name}</strong>
+                      {others.length > 0 && (
+                        <span className="wardrobe-alt">이것도 괜찮아요 · {others.map((o) => o.name).join(', ')}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </section>
 
