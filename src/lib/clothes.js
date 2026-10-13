@@ -4,7 +4,7 @@
 //   - 상의·하의: 원에서 하루 종일 입으니 "낮 최고 체감온도"로 판단
 //   - 겉옷·내복: 오갈 때 필요하니 "등·하원 중 추운 시간 체감온도"로 판단
 // ideal: 가장 잘 맞는 온도. 여러 옷이 범위에 들면 ideal에 가까운 순으로 추천
-// everyday: 평소 가장 많이 입히는 옷. 범위에 들면 비슷한 온도의 옷보다 앞에 둔다
+// everyday: 평소 많이 입히는 옷. 범위에 들면 이 온도(°C)만큼 더 잘 맞는 것으로 보고 앞에 둔다
 //
 // 원 안은 냉난방이 되므로 상의·하의는 기모 이상으로 두꺼워지지 않게 하고,
 // 추위는 겉옷과 내복으로 해결한다.
@@ -36,10 +36,10 @@ export const CLOTHES = [
   { id: 'capri', category: 'bottom', name: '7부 바지', emoji: '👖', range: [21, 28], ideal: 24 },
   { id: 'thin-pants', category: 'bottom', name: '얇은 긴바지', emoji: '👖', range: [18, 25], ideal: 21 },
   { id: 'leggings', category: 'bottom', name: '레깅스', emoji: '👖', range: [14, 22], ideal: 18 },
-  { id: 'cotton-pants', category: 'bottom', name: '면바지', emoji: '👖', range: [13, 21], ideal: 17, everyday: true },
+  { id: 'cotton-pants', category: 'bottom', name: '면바지', emoji: '👖', range: [13, 21], ideal: 17, everyday: 3 },
   { id: 'jogger', category: 'bottom', name: '트레이닝 바지', emoji: '👖', range: [12, 20], ideal: 16 },
-  { id: 'jeans', category: 'bottom', name: '청바지', emoji: '👖', range: [12, 20], ideal: 15.5, everyday: true },
-  { id: 'fleece-jeans', category: 'bottom', name: '기모 청바지', emoji: '👖', range: [-5, 11], ideal: 6, everyday: true },
+  { id: 'jeans', category: 'bottom', name: '청바지', emoji: '👖', range: [12, 20], ideal: 15.5, everyday: 3 },
+  { id: 'fleece-jeans', category: 'bottom', name: '기모 청바지', emoji: '👖', range: [-5, 11], ideal: 6, everyday: 2 },
   { id: 'fleece-leggings', category: 'bottom', name: '기모 레깅스', emoji: '👖', range: [-30, 12], ideal: 7 },
   { id: 'fleece-pants', category: 'bottom', name: '기모 바지', emoji: '👖', range: [-30, 10], ideal: 3 },
 
@@ -68,7 +68,7 @@ export function optionsFor(category, t, { windy = false } = {}) {
   const items = CLOTHES.filter((c) => c.category === category)
   const fit = items.filter((c) => t >= c.range[0] && t <= c.range[1])
   // 바람이 강하면 바람을 막아주는 겉옷을, 평소 많이 입는 옷은 늘 앞으로
-  const score = (c) => Math.abs(t - c.ideal) - (windy && c.windproof ? 3 : 0) - (c.everyday ? 3 : 0)
+  const score = (c) => Math.abs(t - c.ideal) - (windy && c.windproof ? 3 : 0) - (c.everyday ?? 0)
   if (fit.length) return fit.sort((a, b) => score(a) - score(b))
 
   const distance = (c) => Math.min(Math.abs(t - c.range[0]), Math.abs(t - c.range[1]))
