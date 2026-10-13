@@ -170,6 +170,57 @@ h2 {
   box-shadow: var(--shadow);
 }
 
+/* 앱 설치 안내 */
+.install-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--accent-soft);
+  border-radius: 18px;
+  padding: 14px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow);
+}
+
+.install-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  flex-shrink: 0;
+}
+
+.install-body {
+  flex: 1;
+  font-size: 14px;
+  word-break: keep-all;
+}
+
+.install-body p {
+  margin: 4px 0 0;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.install-btn {
+  margin-top: 10px;
+  border: none;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.install-close {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 16px;
+  padding: 0 2px;
+}
+
 /* 설정 */
 .settings {
   display: grid;

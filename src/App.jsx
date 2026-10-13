@@ -5,6 +5,7 @@ import { CATEGORIES } from './lib/clothes.js'
 import ColorPage from './ColorPage.jsx'
 import FeedbackCard from './FeedbackCard.jsx'
 import PlaceSearch from './PlaceSearch.jsx'
+import InstallBanner from './InstallBanner.jsx'
 import { placeNameAt } from './lib/geocode.js'
 import { loadFeedback, saveFeedback, learnedAdjust, describeAdjust } from './lib/feedback.js'
 
@@ -161,6 +162,8 @@ export default function App() {
           ⚙️
         </button>
       </header>
+
+      <InstallBanner />
 
       {showSettings && (
         <section className="card settings">
