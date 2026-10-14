@@ -8,6 +8,12 @@
 //
 // 원 안은 냉난방이 되므로 상의·하의는 기모 이상으로 두꺼워지지 않게 하고,
 // 추위는 겉옷과 내복으로 해결한다.
+//
+// 겉옷·내복 범위는 처음 기준보다 1° 낮췄다 (2026-10-14).
+// 체감온도가 기온보다 낮아서(아침 평균 봄 1.8°·가을 0.7°·겨울 4.1°) 어른 기온별 옷차림표보다
+// 이틀에 한 번꼴로 한 단계 두껍게 나왔음. 작년 서울 365일 시뮬레이션에서
+// 1° 낮춤 = 표와 같음 59% / 한 단계 따뜻 35% / 얇음 6% → "어른보다 살짝 따뜻하게"에 맞음.
+// (2° 낮추면 가을엔 어른보다 얇아져서 제외)
 
 export const CATEGORIES = {
   top: { label: '상의', basis: 'peak' },
@@ -44,20 +50,20 @@ export const CLOTHES = [
   { id: 'fleece-pants', category: 'bottom', name: '기모 바지', emoji: '👖', range: [-30, 10], ideal: 3 },
 
   // 겉옷 (none = 겉옷 없음)
-  { id: 'no-outer', category: 'outer', name: '겉옷 없이', emoji: '🙅', range: [21, 45], ideal: 26 },
-  { id: 'cardigan', category: 'outer', name: '얇은 가디건', emoji: '🧥', range: [17, 23], ideal: 20 },
-  { id: 'windbreaker', category: 'outer', name: '바람막이', emoji: '🧥', range: [14, 21], ideal: 17.5, windproof: true },
-  { id: 'zipup', category: 'outer', name: '후드 집업', emoji: '🧥', range: [13, 20], ideal: 16.5 },
-  { id: 'thick-cardigan', category: 'outer', name: '두꺼운 가디건', emoji: '🧥', range: [12, 18], ideal: 15 },
-  { id: 'fleece-jacket', category: 'outer', name: '후리스', emoji: '🧥', range: [9, 16], ideal: 12.5 },
-  { id: 'jumper', category: 'outer', name: '간절기 점퍼', emoji: '🧥', range: [8, 15], ideal: 11.5, windproof: true },
-  { id: 'light-padding', category: 'outer', name: '경량 패딩', emoji: '🧥', range: [4, 11], ideal: 7.5 },
-  { id: 'padding', category: 'outer', name: '패딩 점퍼', emoji: '🧥', range: [-3, 6], ideal: 2, windproof: true },
-  { id: 'long-padding', category: 'outer', name: '롱패딩', emoji: '🧥', range: [-30, 1], ideal: -6, windproof: true },
+  { id: 'no-outer', category: 'outer', name: '겉옷 없이', emoji: '🙅', range: [20, 45], ideal: 25 },
+  { id: 'cardigan', category: 'outer', name: '얇은 가디건', emoji: '🧥', range: [16, 22], ideal: 19 },
+  { id: 'windbreaker', category: 'outer', name: '바람막이', emoji: '🧥', range: [13, 20], ideal: 16.5, windproof: true },
+  { id: 'zipup', category: 'outer', name: '후드 집업', emoji: '🧥', range: [12, 19], ideal: 15.5 },
+  { id: 'thick-cardigan', category: 'outer', name: '두꺼운 가디건', emoji: '🧥', range: [11, 17], ideal: 14 },
+  { id: 'fleece-jacket', category: 'outer', name: '후리스', emoji: '🧥', range: [8, 15], ideal: 11.5 },
+  { id: 'jumper', category: 'outer', name: '간절기 점퍼', emoji: '🧥', range: [7, 14], ideal: 10.5, windproof: true },
+  { id: 'light-padding', category: 'outer', name: '경량 패딩', emoji: '🧥', range: [3, 10], ideal: 6.5 },
+  { id: 'padding', category: 'outer', name: '패딩 점퍼', emoji: '🧥', range: [-4, 5], ideal: 1, windproof: true },
+  { id: 'long-padding', category: 'outer', name: '롱패딩', emoji: '🧥', range: [-30, 0], ideal: -7, windproof: true },
 
   // 내복
-  { id: 'no-innerwear', category: 'innerwear', name: '내복 없이', emoji: '🙅', range: [3, 45], ideal: 15 },
-  { id: 'innerwear', category: 'innerwear', name: '내복 상하의', emoji: '🩲', range: [-30, 6], ideal: -5 },
+  { id: 'no-innerwear', category: 'innerwear', name: '내복 없이', emoji: '🙅', range: [2, 45], ideal: 14 },
+  { id: 'innerwear', category: 'innerwear', name: '내복 상하의', emoji: '🩲', range: [-30, 5], ideal: -6 },
 ]
 
 /**
