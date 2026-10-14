@@ -90,12 +90,26 @@ export function colorCombos(date, { rainy, peakEff }) {
 
 // ---------- 2) 색 조합 페이지 ----------
 
+// 보여주는 순서 그대로: 베스트 → 실패 없는 기본 → 톤온톤 → (주의) 피하면 좋은 조합
 export const MATCH_TYPES = {
+  best: { label: '베스트', reason: '코디 조합표에서 강력 추천하는 조합이에요' },
   basic: { label: '실패 없는 기본', reason: '어떤 날에도 무난하게 잘 어울려요' },
   tone: { label: '톤온톤', reason: '비슷한 계열이라 차분하고 세련돼 보여요' },
-  point: { label: '포인트 조합', reason: '색이 대비돼서 생기 있고 눈에 띄어요' },
   avoid: { label: '피하면 좋은 조합', reason: '비슷한 색이 겹치거나 서로 어색해 보여요' },
 }
+
+// 베스트: 코디 조합표들에서 ◎(완전 강추)·A+(최강 조합)였던 조합 (상의-하의)
+const BEST = new Set([
+  'white-denim', 'white-lightdenim', 'white-beige', 'white-black',
+  'ivory-lightdenim', 'cream-lightdenim',
+  'navy-beige', 'navy-khaki', 'navy-charcoal',
+  'blue-denim', 'green-lightdenim',
+  'pink-lightdenim', 'lightpink-lightdenim',
+  'yellow-denim', 'yellow-black',
+])
+
+// 표의 point(대비 조합)는 화면에서는 "실패 없는 기본"으로 함께 보여준다
+const displayType = (top, bottom, type) => (BEST.has(`${top}-${bottom}`) ? 'best' : type === 'point' ? 'basic' : type)
 
 // 상의 색 → 어울리는 하의 색. 하의에서 찾을 때는 이 표를 거꾸로 읽는다.
 // 인터넷 코디 색 조합표들(코디북, 스타일샤워 등)에서 공통으로 좋다/피하라는 조합을 참고
@@ -213,15 +227,17 @@ export const BOTTOM_COLORS = [
  * @param side 'top' | 'bottom'  고른 색이 상의인지 하의인지
  * @param id   고른 색 id
  * @param tone 아이 톤. 하의로 찾을 때(결과가 상의일 때) 톤에 맞는 상의를 앞으로
- * @returns [{ color, type }]  반대쪽에 어울리는 색 (기본 → 톤온톤 → 포인트 → 피할 조합 순)
+ * @returns [{ color, type }]  반대쪽에 어울리는 색 (베스트 → 기본 → 톤온톤 → 피할 조합 순)
  */
 export function matchesFor(side, id, tone = 'unknown') {
   const order = Object.keys(MATCH_TYPES)
   const list =
     side === 'top'
-      ? (MATCHES[id] ?? []).map(([other, type]) => ({ color: color(other), type }))
+      ? (MATCHES[id] ?? []).map(([other, type]) => ({ color: color(other), type: displayType(id, other, type) }))
       : Object.entries(MATCHES).flatMap(([top, list]) =>
-          list.filter(([bottom]) => bottom === id).map(([, type]) => ({ color: color(top), type })),
+          list
+            .filter(([bottom]) => bottom === id)
+            .map(([, type]) => ({ color: color(top), type: displayType(top, id, type) })),
         )
   // 종류별로 묶고, 묶음 안에서는 컬러와 무채색을 번갈아 (앞쪽만 보여줘도 다양하게)
   return order.flatMap((type) => {
