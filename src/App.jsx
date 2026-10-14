@@ -208,6 +208,9 @@ export default function App() {
               </button>
             </div>
           )}
+          <button className="done-btn" onClick={() => setShowSettings(false)}>
+            완료
+          </button>
         </section>
       )}
 
@@ -259,7 +262,7 @@ export default function App() {
                       <span className="wardrobe-label">{label}</span>
                       <strong className="wardrobe-pick">{best.name}</strong>
                       {others.length > 0 && (
-                        <span className="wardrobe-alt">이것도 괜찮아요 · {others.map((o) => o.name).join(', ')}</span>
+                        <span className="wardrobe-alt">또는 {others.map((o) => o.name).join(', ')}도 괜찮아요</span>
                       )}
                     </div>
                   </div>
@@ -328,7 +331,9 @@ export default function App() {
   )
 }
 
-function Timeline({ hours }) {
+// 옆으로 밀지 않고 한 화면에. 12시간이 넘으면 2시간 간격 (마지막 시간은 항상 포함)
+function Timeline({ hours: all }) {
+  const hours = all.length > 12 ? all.filter((_, i) => i % 2 === 0 || i === all.length - 1) : all
   const temps = hours.map((h) => h.temp)
   const lo = Math.min(...temps)
   const hi = Math.max(...temps)
