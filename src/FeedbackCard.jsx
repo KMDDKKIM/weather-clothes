@@ -14,9 +14,6 @@ export default function FeedbackCard({ entry, onChange, beforePickup }) {
     return (
       <section className="card feedback">
         <h2>오늘 옷차림 어땠어요?</h2>
-        <p className="hint">
-          {beforePickup ? '하원 후에 알려주시면' : '알려주시면'} 우리 아이에게 맞게 다음 추천을 조정할게요.
-        </p>
         <div className="rating-buttons">
           {Object.entries(RATINGS).map(([key, { emoji, label }]) => (
             <button key={key} className="rating" onClick={() => rate(key)}>
@@ -25,6 +22,9 @@ export default function FeedbackCard({ entry, onChange, beforePickup }) {
             </button>
           ))}
         </div>
+        <p className="hint">
+          {beforePickup ? '하원 후에 알려주시면' : '알려주시면'} 우리 아이에게 맞게 다음 추천을 조정할게요.
+        </p>
       </section>
     )
   }

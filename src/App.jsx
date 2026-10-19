@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchWeather, describeWeather } from './lib/weather.js'
-import { buildPlan, timeToHour, SENSITIVITY } from './lib/outfit.js'
+import { buildPlan, lateNote, outdoorNote, timeToHour, SENSITIVITY } from './lib/outfit.js'
 import { CATEGORIES } from './lib/clothes.js'
 import ColorPage from './ColorPage.jsx'
 import FeedbackCard from './FeedbackCard.jsx'
@@ -8,6 +8,7 @@ import PlaceSearch from './PlaceSearch.jsx'
 import InstallBanner from './InstallBanner.jsx'
 import { placeNameAt } from './lib/geocode.js'
 import { loadFeedback, saveFeedback, learnedAdjust, describeAdjust } from './lib/feedback.js'
+import { hourOf, nowOuting, tomorrowOuting, lateBack, joinDays } from './lib/outing.js'
 
 const DEFAULT_SETTINGS = {
   dropoff: '08:30',
@@ -38,9 +39,8 @@ function saveSettings(settings) {
   }
 }
 
-function isAfterPickup(pickup) {
-  const now = new Date()
-  return now.getHours() + now.getMinutes() / 60 >= timeToHour(pickup)
+function isAfterPickup(pickup, now = new Date()) {
+  return hourOf(now) >= timeToHour(pickup)
 }
 
 // 하원 시간이 지났으면 내일 옷을 준비할 시간
@@ -48,9 +48,14 @@ function defaultDayIndex(pickup) {
   return isAfterPickup(pickup) ? 1 : 0
 }
 
+// 앱을 30분 넘게 안 보다가 다시 열면 지금 시각 기준으로 처음부터 (날씨도 새로)
+const STALE_MS = 30 * 60 * 1000
+
 export default function App() {
   const [settings, setSettings] = useState(loadSettings)
   const [dayIndex, setDayIndex] = useState(() => defaultDayIndex(loadSettings().pickup))
+  const [now, setNow] = useState(() => new Date())
+  const [refreshKey, setRefreshKey] = useState(0)
   const [page, setPage] = useState('weather') // 'weather' | 'colors'
   const [days, setDays] = useState(null)
   const [error, setError] = useState(null)
@@ -75,19 +80,65 @@ export default function App() {
     return () => {
       cancelled = true
     }
-  }, [settings.lat, settings.lon])
+  }, [settings.lat, settings.lon, refreshKey])
+
+  // 지금 시각은 1분마다, 그리고 앱으로 돌아올 때 새로 잰다
+  useEffect(() => {
+    let hiddenAt = null
+    const tick = () => setNow(new Date())
+    const onVisible = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now()
+        return
+      }
+      tick()
+      if (hiddenAt && Date.now() - hiddenAt > STALE_MS) {
+        setDayIndex(defaultDayIndex(settings.pickup))
+        setRefreshKey((k) => k + 1)
+      }
+      hiddenAt = null
+    }
+    const timer = setInterval(tick, 60 * 1000)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(timer)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [settings.pickup])
+
+  // '지금': 평일 하원 전엔 등원 기준, 하원 후·주말엔 지금 나가는 기준 / '내일': 설정 시간 (주말이면 외출 말투)
+  const outing = dayIndex === 0 ? nowOuting(now, settings) : tomorrowOuting(now, settings)
+  const { mode, dropoff: leaveAt, pickup: backAt } = outing
 
   const day = days?.[dayIndex]
+  // '지금' 탭은 자정을 넘는 외출도 있으니 내일 날씨까지 이어 본다
+  const planDay = useMemo(() => (day && dayIndex === 0 ? joinDays(days[0], days[1]) : day), [days, day, dayIndex])
   // 그날보다 이전 피드백만 반영 (오늘 남긴 피드백은 내일 추천부터)
   const adjust = useMemo(() => {
     if (!day) return { peak: 0, cold: 0 }
     return learnedAdjust(Object.fromEntries(Object.entries(feedback).filter(([date]) => date < day.date)))
   }, [day, feedback])
-  const plan = useMemo(() => (day ? buildPlan(day, settings, adjust) : null), [day, settings, adjust])
+  const plan = useMemo(
+    () => (planDay ? buildPlan(planDay, { ...settings, mode, dropoff: leaveAt, pickup: backAt }, adjust) : null),
+    [planDay, settings, adjust, mode, leaveAt, backAt],
+  )
+  // 저녁 늦게 들어오면 옷이 달라지는지 ('지금' 탭, 외출할 때만)
+  const late = useMemo(() => {
+    const lateTime = lateBack(backAt)
+    if (!plan || dayIndex !== 0 || mode !== 'outing' || lateTime == null) return null
+    return lateNote(plan, buildPlan(planDay, { ...settings, mode, dropoff: leaveAt, pickup: lateTime }, adjust))
+  }, [plan]) // plan이 바뀔 때만 다시 (나머지 값은 plan을 만든 값과 같다)
+  const notes = plan ? [...plan.worries, ...[late, outdoorNote(plan)].filter(Boolean)] : []
+  // 지금 막 나가는 거면 시간 대신 '지금'
+  const leavingNow = dayIndex === 0 && mode === 'outing' && leaveAt > timeToHour(settings.dropoff)
+  // 저녁 외출처럼 나갈 때·들어올 때가 가장 따뜻하면 같은 카드가 두 번 나오니 뺀다
+  const moments = (plan?.moments ?? []).filter((m, _, [leave, , back]) => {
+    return m.key !== 'peak' || (m.time !== leave.time && m.time !== back.time)
+  })
 
   const today = days?.[0]
   const todayPlan = useMemo(() => (today ? buildPlan(today, settings) : null), [today, settings])
-  const afterPickup = isAfterPickup(settings.pickup)
+  const afterPickup = isAfterPickup(settings.pickup, now)
   const adjustText = describeAdjust(learnedAdjust(feedback))
 
   const setTodayFeedback = (entry) => {
@@ -215,7 +266,7 @@ export default function App() {
       )}
 
       <div className="tabs">
-        {['오늘', '내일'].map((label, i) => (
+        {['지금', '내일'].map((label, i) => (
           <button
             key={label}
             className={`tab ${page === 'weather' && dayIndex === i ? 'on' : ''}`}
@@ -235,7 +286,7 @@ export default function App() {
       {page === 'colors' && (
         <ColorPage
           plan={plan}
-          dayLabel={dayIndex === 0 ? '오늘' : '내일'}
+          dayLabel={dayIndex === 0 ? '지금' : '내일'}
           tone={settings.tone}
           onTone={(tone) => update({ tone })}
         />
@@ -271,11 +322,11 @@ export default function App() {
             </div>
           </section>
 
-          <section className="moments">
-            {plan.moments.map((m) => (
+          <section className="moments" style={{ gridTemplateColumns: `repeat(${moments.length}, 1fr)` }}>
+            {moments.map((m) => (
               <div key={m.key} className={`moment ${m.key}`}>
                 <span className="m-label">{m.label}</span>
-                <span className="m-time">{m.timeText}</span>
+                <span className="m-time">{leavingNow && m.key === 'dropoff' ? '지금' : m.timeText}</span>
                 <span className="m-emoji">{m.weather.emoji}</span>
                 <span className="m-temp">{m.temp}°</span>
                 <span className="m-feels">체감 {m.feels}°</span>
@@ -283,14 +334,13 @@ export default function App() {
             ))}
           </section>
 
-          <section className="worries">
-            {plan.worries.map((w) => (
-              <div key={w.q} className="card worry">
-                <p className="q">
-                  {w.emoji} {w.q}
-                </p>
-                <p className="a">{w.a}</p>
-              </div>
+          {/* 엄마의 걱정(덥지 않을까? 춥지 않을까?)에 한 줄씩 + 저녁 늦게·놀이터 안내 */}
+          <section className="card tips">
+            {notes.map((t) => (
+              <p key={t.text} className="tip">
+                <span className="tip-emoji">{t.emoji}</span>
+                <span>{t.text}</span>
+              </p>
             ))}
           </section>
 
@@ -312,7 +362,7 @@ export default function App() {
           )}
 
           <section className="card">
-            <h2>원에 있는 동안</h2>
+            <h2>{plan.stayLabel}</h2>
             <Timeline hours={plan.stayHours} />
             <p className="daily">
               하루 최저 {Math.round(day.min)}° · 최고 {Math.round(day.max)}°
@@ -348,7 +398,7 @@ function Timeline({ hours: all }) {
               <div className="t-bar" style={{ height: `${20 + ratio * 80}%` }} />
             </div>
             <span className="t-emoji">{describeWeather(h.code).emoji}</span>
-            <span className="t-hour">{h.hour}시</span>
+            <span className="t-hour">{h.hour % 24}시</span>
             {h.rainProb >= 30 && <span className="t-rain">{h.rainProb}%</span>}
           </div>
         )
