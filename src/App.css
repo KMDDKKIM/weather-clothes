@@ -398,6 +398,13 @@ h2 {
   color: var(--bg);
 }
 
+.tab-date {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.75;
+}
+
 .loading,
 .error {
   text-align: center;
@@ -765,6 +772,17 @@ h2 {
 .m-feels {
   font-size: 12px;
   color: var(--muted);
+}
+
+.m-wind {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.m-wind.strong {
+  color: var(--cool);
+  font-weight: 700;
 }
 
 /* 엄마 걱정에 한 줄씩 + 저녁 늦게·놀이터 안내 */
