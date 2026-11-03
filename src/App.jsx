@@ -48,6 +48,13 @@ function defaultDayIndex(pickup) {
   return isAfterPickup(pickup) ? 1 : 0
 }
 
+// '2026-11-03' → '11/3 (화)'
+function shortDate(iso) {
+  const [y, m, d] = iso.split('-').map(Number)
+  const weekday = '일월화수목금토'[new Date(y, m - 1, d).getDay()]
+  return `${m}/${d} (${weekday})`
+}
+
 // 앱을 30분 넘게 안 보다가 다시 열면 지금 시각 기준으로 처음부터 (날씨도 새로)
 const STALE_MS = 30 * 60 * 1000
 
@@ -276,6 +283,7 @@ export default function App() {
             }}
           >
             {label}
+            {days?.[i] && <span className="tab-date">{shortDate(days[i].date)}</span>}
           </button>
         ))}
         <button className={`tab ${page === 'colors' ? 'on' : ''}`} onClick={() => setPage('colors')}>
@@ -330,6 +338,10 @@ export default function App() {
                 <span className="m-emoji">{m.weather.emoji}</span>
                 <span className="m-temp">{m.temp}°</span>
                 <span className="m-feels">체감 {m.feels}°</span>
+                {/* 초속 5m부터는 아이가 춥게 느낄 만큼 세다 (바람막이 추천 기준과 같음) */}
+                <span className={`m-wind ${m.wind >= 5 ? 'strong' : ''}`}>
+                  💨 {m.wind}m/s{m.wind >= 5 && ' 강함'}
+                </span>
               </div>
             ))}
           </section>

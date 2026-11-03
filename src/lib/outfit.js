@@ -141,6 +141,7 @@ function summarize(w) {
     timeText: formatHour(w.time),
     temp: round(w.temp),
     feels: round(w.feels),
+    wind: round(w.wind),
     weather: describeWeather(w.code),
   }
 }
