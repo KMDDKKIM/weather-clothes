@@ -197,19 +197,31 @@ export default function App() {
   const useMyLocation = () => {
     if (!navigator.geolocation) return setError('이 브라우저는 위치 기능을 지원하지 않아요.')
     setLocating(true)
+    const found = async (pos) => {
+      const { latitude: lat, longitude: lon } = pos.coords
+      update({ lat, lon, placeName: '현재 위치' })
+      setLocating(false)
+      // 동네 이름을 찾으면 '현재 위치' 대신 표시
+      const name = await placeNameAt(lat, lon)
+      if (name) update({ placeName: name })
+    }
+    const failed = (err) => {
+      setError(
+        err.code === err.PERMISSION_DENIED
+          ? '위치 권한이 꺼져 있어요. 휴대폰 설정에서 허용하거나, 동네 이름으로 검색해주세요.'
+          : '위치를 찾지 못했어요. 잠시 후 다시 누르거나, 동네 이름으로 검색해주세요.',
+      )
+      setLocating(false)
+    }
+    // 날씨엔 대략적인 위치(와이파이·기지국)로 충분해서 먼저 그걸로 빨리 찾고,
+    // 못 찾으면(실내 등) GPS로 한 번 더. 10분 안에 잡은 위치는 그대로 쓴다
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude: lat, longitude: lon } = pos.coords
-        update({ lat, lon, placeName: '현재 위치' })
-        setLocating(false)
-        // 동네 이름을 찾으면 '현재 위치' 대신 표시
-        const name = await placeNameAt(lat, lon)
-        if (name) update({ placeName: name })
+      found,
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) return failed(err)
+        navigator.geolocation.getCurrentPosition(found, failed, { enableHighAccuracy: true, timeout: 15 * 1000 })
       },
-      () => {
-        setError('위치를 가져오지 못했어요. 브라우저 위치 권한을 확인해주세요.')
-        setLocating(false)
-      },
+      { enableHighAccuracy: false, maximumAge: 10 * 60 * 1000, timeout: 8 * 1000 },
     )
   }
 
