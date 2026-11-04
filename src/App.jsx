@@ -55,6 +55,12 @@ function shortDate(iso) {
   return `${m}/${d} (${weekday})`
 }
 
+// 스토어 앱에서는 앱 안에 열리면 돌아갈 버튼이 없으니 인터넷 주소로 (휴대폰 브라우저에서 열림)
+const PRIVACY_URL =
+  import.meta.env.MODE === 'app'
+    ? 'https://kmddkkim.github.io/weather-clothes/privacy.html'
+    : `${import.meta.env.BASE_URL}privacy.html`
+
 // 앱을 30분 넘게 안 보다가 다시 열면 지금 시각 기준으로 처음부터 (날씨도 새로)
 const STALE_MS = 30 * 60 * 1000
 
@@ -221,7 +227,8 @@ export default function App() {
         </button>
       </header>
 
-      <InstallBanner />
+      {/* 스토어 앱(--mode app)은 이미 설치된 앱이라 설치 안내가 필요 없다 */}
+      {import.meta.env.MODE !== 'app' && <InstallBanner />}
 
       {showSettings && (
         <section className="card settings">
@@ -387,7 +394,8 @@ export default function App() {
       )}
 
       <footer>
-        날씨 데이터: <a href="https://open-meteo.com/">Open-Meteo.com</a>
+        날씨 데이터: <a href="https://open-meteo.com/">Open-Meteo.com</a> ·{' '}
+        <a href={PRIVACY_URL}>개인정보처리방침</a>
       </footer>
     </div>
   )

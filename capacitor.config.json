@@ -1,0 +1,13 @@
+{
+  "appId": "io.github.kmddkkim.weatherclothes",
+  "appName": "오늘 뭐 입혀?",
+  "webDir": "dist-app",
+  "android": {
+    "backgroundColor": "#FFF8EE"
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "native"
+    }
+  }
+}

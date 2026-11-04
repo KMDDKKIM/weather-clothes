@@ -3,12 +3,15 @@ import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 
 // GitHub Pages 주소가 https://kmddkkim.github.io/weather-clothes/ 이므로 배포 빌드에만 경로를 붙인다
-export default defineConfig(({ command, isPreview }) => ({
-  base: command === 'build' || isPreview ? '/weather-clothes/' : '/',
+// --mode app: 스토어 앱(Capacitor)용 빌드. 앱 안에 파일을 넣으니 경로 없이, 홈 화면 설치(PWA)도 필요 없다
+export default defineConfig(({ command, isPreview, mode }) => ({
+  base: mode === 'app' ? '/' : command === 'build' || isPreview ? '/weather-clothes/' : '/',
+  build: mode === 'app' ? { outDir: 'dist-app' } : {},
   plugins: [
     react(),
     // 홈 화면 설치(PWA): 앱 정보 + 오프라인 캐시
     VitePWA({
+      disable: mode === 'app',
       registerType: 'autoUpdate', // 새로 배포하면 다음 실행 때 자동으로 새 버전
       includeAssets: ['icon.svg', 'apple-touch-icon.png'],
       manifest: {
