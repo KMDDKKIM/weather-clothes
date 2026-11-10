@@ -1,23 +1,22 @@
 import { useEffect, useMemo, useState } from 'react'
 import { fetchWeather, describeWeather } from './lib/weather.js'
-import { buildPlan, lateNote, outdoorNote, timeToHour, SENSITIVITY } from './lib/outfit.js'
-import { CATEGORIES } from './lib/clothes.js'
+import { PROFILES, timeToHour } from './lib/profiles.js'
 import ColorPage from './ColorPage.jsx'
 import FeedbackCard from './FeedbackCard.jsx'
 import PlaceSearch from './PlaceSearch.jsx'
 import InstallBanner from './InstallBanner.jsx'
 import { placeNameAt } from './lib/geocode.js'
 import { loadFeedback, saveFeedback, learnedAdjust, describeAdjust } from './lib/feedback.js'
-import { hourOf, nowOuting, tomorrowOuting, lateBack, joinDays } from './lib/outing.js'
+import { hourOf, joinDays } from './lib/outing.js'
 
+// 아이 설정은 예전처럼 맨 바깥에 (이미 쓰던 사람 설정이 그대로 이어지게), '나' 설정은 me 안에
 const DEFAULT_SETTINGS = {
-  dropoff: '08:30',
-  pickup: '16:00',
-  sensitivity: 'normal',
-  tone: 'unknown',
+  ...PROFILES.kid.defaults,
   lat: 37.5665,
   lon: 126.978,
   placeName: '서울',
+  profile: 'kid', // 'kid' | 'me'
+  me: PROFILES.me.defaults,
 }
 
 const STORAGE_KEY = 'weather-clothes-settings'
@@ -25,7 +24,7 @@ const STORAGE_KEY = 'weather-clothes-settings'
 function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY))
-    return { ...DEFAULT_SETTINGS, ...saved }
+    return { ...DEFAULT_SETTINGS, ...saved, me: { ...DEFAULT_SETTINGS.me, ...saved?.me } }
   } catch {
     return DEFAULT_SETTINGS
   }
@@ -39,13 +38,21 @@ function saveSettings(settings) {
   }
 }
 
-function isAfterPickup(pickup, now = new Date()) {
-  return hourOf(now) >= timeToHour(pickup)
+// 지금 보는 프로필(아이 / 나)과 그 프로필의 설정
+function profileOf(settings) {
+  const key = settings.profile in PROFILES ? settings.profile : 'kid'
+  return { key, profile: PROFILES[key], ps: key === 'kid' ? settings : settings.me }
 }
 
-// 하원 시간이 지났으면 내일 옷을 준비할 시간
-function defaultDayIndex(pickup) {
-  return isAfterPickup(pickup) ? 1 : 0
+// 하원(집에 들어오는) 시간이 지났는지
+function isAfterBack(back, now = new Date()) {
+  return hourOf(now) >= timeToHour(back)
+}
+
+// 하원(집에 들어오는) 시간이 지났으면 내일 옷을 준비할 시간
+function defaultDayIndex(settings) {
+  const { profile, ps } = profileOf(settings)
+  return isAfterBack(ps[profile.backKey]) ? 1 : 0
 }
 
 // '2026-11-03' → '11/3 (화)'
@@ -66,7 +73,7 @@ const STALE_MS = 30 * 60 * 1000
 
 export default function App() {
   const [settings, setSettings] = useState(loadSettings)
-  const [dayIndex, setDayIndex] = useState(() => defaultDayIndex(loadSettings().pickup))
+  const [dayIndex, setDayIndex] = useState(() => defaultDayIndex(loadSettings()))
   const [now, setNow] = useState(() => new Date())
   const [refreshKey, setRefreshKey] = useState(0)
   const [page, setPage] = useState('weather') // 'weather' | 'colors'
@@ -74,15 +81,23 @@ export default function App() {
   const [error, setError] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
   const [locating, setLocating] = useState(false)
-  const [feedback, setFeedback] = useState(loadFeedback)
+  // 피드백은 프로필마다 따로 (아이가 추웠다고 내 옷까지 두꺼워지면 안 되니까)
+  const [feedbacks, setFeedbacks] = useState(() => ({
+    kid: loadFeedback(PROFILES.kid.feedbackKey),
+    me: loadFeedback(PROFILES.me.feedbackKey),
+  }))
+
+  const { key: profileKey, profile, ps } = profileOf(settings)
+  const feedback = feedbacks[profileKey]
+  const backSetting = ps[profile.backKey]
 
   useEffect(() => {
     saveSettings(settings)
   }, [settings])
 
   useEffect(() => {
-    saveFeedback(feedback)
-  }, [feedback])
+    for (const key of Object.keys(PROFILES)) saveFeedback(feedbacks[key], PROFILES[key].feedbackKey)
+  }, [feedbacks])
 
   useEffect(() => {
     let cancelled = false
@@ -106,7 +121,7 @@ export default function App() {
       }
       tick()
       if (hiddenAt && Date.now() - hiddenAt > STALE_MS) {
-        setDayIndex(defaultDayIndex(settings.pickup))
+        setDayIndex(isAfterBack(backSetting) ? 1 : 0)
         setRefreshKey((k) => k + 1)
       }
       hiddenAt = null
@@ -117,11 +132,14 @@ export default function App() {
       clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisible)
     }
-  }, [settings.pickup])
+  }, [backSetting])
 
-  // '지금': 평일 하원 전엔 등원 기준, 하원 후·주말엔 지금 나가는 기준 / '내일': 설정 시간 (주말이면 외출 말투)
-  const outing = dayIndex === 0 ? nowOuting(now, settings) : tomorrowOuting(now, settings)
-  const { mode, dropoff: leaveAt, pickup: backAt } = outing
+  // '지금'과 '내일'의 나갈·들어올 시간 (프로필마다 규칙이 다르다: profiles.js)
+  const opts = useMemo(
+    () => (dayIndex === 0 ? profile.nowOpts(now, ps) : profile.tomorrowOpts(now, ps)),
+    [profile, ps, dayIndex, now],
+  )
+  const leaveAt = opts[profile.leaveKey]
 
   const day = days?.[dayIndex]
   // '지금' 탭은 자정을 넘는 외출도 있으니 내일 날씨까지 이어 본다
@@ -132,35 +150,37 @@ export default function App() {
     return learnedAdjust(Object.fromEntries(Object.entries(feedback).filter(([date]) => date < day.date)))
   }, [day, feedback])
   const plan = useMemo(
-    () => (planDay ? buildPlan(planDay, { ...settings, mode, dropoff: leaveAt, pickup: backAt }, adjust) : null),
-    [planDay, settings, adjust, mode, leaveAt, backAt],
+    () => (planDay ? profile.buildPlan(planDay, opts, adjust) : null),
+    // opts는 1분마다 새로 만들어지니, 실제 시간이 바뀔 때만 다시 계산
+    [planDay, profile, ps, adjust, opts.mode, leaveAt, opts[profile.backKey]],
   )
-  // 저녁 늦게 들어오면 옷이 달라지는지 ('지금' 탭, 외출할 때만)
+  // 저녁(밤)늦게 들어오면 옷이 달라지는지 ('지금' 탭만)
   const late = useMemo(() => {
-    const lateTime = lateBack(backAt)
-    if (!plan || dayIndex !== 0 || mode !== 'outing' || lateTime == null) return null
-    return lateNote(plan, buildPlan(planDay, { ...settings, mode, dropoff: leaveAt, pickup: lateTime }, adjust))
+    const lateOpts = plan && dayIndex === 0 ? profile.lateOpts(opts) : null
+    return lateOpts ? profile.lateNote(plan, profile.buildPlan(planDay, lateOpts, adjust)) : null
   }, [plan]) // plan이 바뀔 때만 다시 (나머지 값은 plan을 만든 값과 같다)
-  const notes = plan ? [...plan.worries, ...[late, outdoorNote(plan)].filter(Boolean)] : []
+  const notes = plan ? profile.notes(plan, late) : []
   // 지금 막 나가는 거면 시간 대신 '지금'
-  const leavingNow = dayIndex === 0 && mode === 'outing' && leaveAt > timeToHour(settings.dropoff)
+  const leavingNow = dayIndex === 0 && leaveAt > timeToHour(ps[profile.leaveKey])
   // 저녁 외출처럼 나갈 때·들어올 때가 가장 따뜻하면 같은 카드가 두 번 나오니 뺀다
   const moments = (plan?.moments ?? []).filter((m, _, [leave, , back]) => {
     return m.key !== 'peak' || (m.time !== leave.time && m.time !== back.time)
   })
 
   const today = days?.[0]
-  const todayPlan = useMemo(() => (today ? buildPlan(today, settings) : null), [today, settings])
-  const afterPickup = isAfterPickup(settings.pickup, now)
-  const adjustText = describeAdjust(learnedAdjust(feedback))
+  const todayPlan = useMemo(() => (today ? profile.buildPlan(today, ps) : null), [today, profile, ps])
+  const afterBack = isAfterBack(backSetting, now)
+  const adjustText = describeAdjust(learnedAdjust(feedback), profile.commuteLabel)
+
+  const setFeedback = (next) => setFeedbacks((all) => ({ ...all, [profileKey]: next(all[profileKey]) }))
 
   const setTodayFeedback = (entry) => {
     setFeedback((log) => {
       const next = { ...log }
       if (entry) {
         // 그날 날씨도 함께 기록 (나중에 분석용)
-        const [, peak, pickupMoment] = todayPlan?.moments ?? []
-        next[today.date] = { ...entry, peakFeels: peak?.feels, coldFeels: pickupMoment?.feels }
+        const [, peak, backMoment] = todayPlan?.moments ?? []
+        next[today.date] = { ...entry, peakFeels: peak?.feels, coldFeels: backMoment?.feels }
       } else {
         delete next[today.date]
       }
@@ -169,29 +189,45 @@ export default function App() {
   }
 
   const feedbackCard = today && (
-    <FeedbackCard entry={feedback[today.date]} onChange={setTodayFeedback} beforePickup={!afterPickup} />
+    <FeedbackCard
+      entry={feedback[today.date]}
+      onChange={setTodayFeedback}
+      hint={profile.feedbackHint(!afterBack)}
+      whens={profile.whens}
+    />
   )
 
-  // 카테고리별로 보여줄 옷. 내복은 입을 수도 있는 날에만 보여준다
+  // 카테고리별로 보여줄 옷. 내복(발열 내의)은 입을 수도 있는 날에만 보여준다
   const wardrobe = plan
-    ? Object.keys(CATEGORIES)
+    ? Object.keys(profile.CATEGORIES)
         .map((category) => {
           const options = plan.pieces[category]
-          if (category !== 'innerwear') return { category, label: CATEGORIES[category].label, options }
+          if (category !== 'innerwear') return { category, label: profile.CATEGORIES[category].label, options }
           const innerwear = options.filter((o) => o.id === 'innerwear')
           if (!innerwear.length) return null
-          return { category, label: plan.outfit.innerwear ? '내복' : '내복 (추위 타면)', options: innerwear }
+          const [sure, maybe] = profile.innerwearLabels
+          return { category, label: plan.outfit.innerwear ? sure : maybe, options: innerwear }
         })
         .filter(Boolean)
     : []
 
   const update = (patch) => setSettings((s) => ({ ...s, ...patch }))
-  // 시간 입력을 지우는 중이거나 하원이 등원보다 빠르면 반영하지 않음
+  // 지금 프로필의 설정만 바꾼다 (아이는 맨 바깥, 나는 me 안)
+  const updateProfile = (patch) =>
+    setSettings((s) => (profileKey === 'kid' ? { ...s, ...patch } : { ...s, me: { ...s.me, ...patch } }))
+  // 시간 입력을 지우는 중이거나 들어올 시간이 나갈 시간보다 빠르면 반영하지 않음
   const updateTime = (key, value) => {
     if (!value) return
-    const next = { ...settings, [key]: value }
-    if (timeToHour(next.pickup) <= timeToHour(next.dropoff)) return
-    update({ [key]: value })
+    const next = { ...ps, [key]: value }
+    if (timeToHour(next[profile.backKey]) <= timeToHour(next[profile.leaveKey])) return
+    updateProfile({ [key]: value })
+  }
+
+  const switchProfile = (key) => {
+    if (key === profileKey) return
+    const next = { ...settings, profile: key }
+    setSettings(next)
+    setDayIndex(defaultDayIndex(next))
   }
 
   const useMyLocation = () => {
@@ -229,7 +265,7 @@ export default function App() {
     <div className="app">
       <header className="top">
         <div>
-          <h1>오늘 뭐 입혀?</h1>
+          <h1>{profile.title}</h1>
           <button className="place" onClick={() => setShowSettings(true)}>
             📍 {settings.placeName} <span className="place-change">변경</span>
           </button>
@@ -238,6 +274,21 @@ export default function App() {
           ⚙️
         </button>
       </header>
+
+      {/* 누구 옷을 볼지 */}
+      <div className="profiles" role="tablist" aria-label="누구 옷">
+        {Object.entries(PROFILES).map(([key, p]) => (
+          <button
+            key={key}
+            role="tab"
+            aria-selected={profileKey === key}
+            className={`profile ${profileKey === key ? 'on' : ''}`}
+            onClick={() => switchProfile(key)}
+          >
+            {p.tab}
+          </button>
+        ))}
+      </div>
 
       {/* 스토어 앱(--mode app)은 이미 설치된 앱이라 설치 안내가 필요 없다 */}
       {import.meta.env.MODE !== 'app' && <InstallBanner />}
@@ -255,22 +306,37 @@ export default function App() {
               {locating ? '위치 찾는 중…' : '📍 현재 위치로 설정'}
             </button>
           </div>
-          <label>
-            등원 시간
-            <input type="time" value={settings.dropoff} onChange={(e) => updateTime('dropoff', e.target.value)} />
-          </label>
-          <label>
-            하원 시간
-            <input type="time" value={settings.pickup} onChange={(e) => updateTime('pickup', e.target.value)} />
-          </label>
+          <p className="settings-for">{profile.tab} 설정</p>
+          {[profile.leaveKey, profile.backKey].map((key) => (
+            <label key={key}>
+              {profile.timeLabels[key]}
+              <input type="time" value={ps[key]} onChange={(e) => updateTime(key, e.target.value)} />
+            </label>
+          ))}
+          {profile.GENDERS && (
+            <div className="field">
+              <span>추천할 옷</span>
+              <div className="chips">
+                {Object.entries(profile.GENDERS).map(([key, { label }]) => (
+                  <button
+                    key={key}
+                    className={`chip ${ps.gender === key ? 'on' : ''}`}
+                    onClick={() => updateProfile({ gender: key })}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="field">
-            <span>우리 아이는</span>
+            <span>{profile.sensitivityLabel}</span>
             <div className="chips">
-              {Object.entries(SENSITIVITY).map(([key, { label }]) => (
+              {Object.entries(profile.SENSITIVITY).map(([key, { label }]) => (
                 <button
                   key={key}
-                  className={`chip ${settings.sensitivity === key ? 'on' : ''}`}
-                  onClick={() => update({ sensitivity: key })}
+                  className={`chip ${ps.sensitivity === key ? 'on' : ''}`}
+                  onClick={() => updateProfile({ sensitivity: key })}
                 >
                   {label}
                 </button>
@@ -280,7 +346,7 @@ export default function App() {
           {adjustText && (
             <div className="adjust">
               <span>💬 피드백 반영: {adjustText}</span>
-              <button className="link-btn" onClick={() => setFeedback({})}>
+              <button className="link-btn" onClick={() => setFeedback(() => ({}))}>
                 초기화
               </button>
             </div>
@@ -312,10 +378,13 @@ export default function App() {
 
       {page === 'colors' && (
         <ColorPage
+          key={profileKey}
           plan={plan}
           dayLabel={dayIndex === 0 ? '지금' : '내일'}
-          tone={settings.tone}
-          onTone={(tone) => update({ tone })}
+          profile={profile}
+          tone={ps.tone}
+          onTone={(tone) => updateProfile({ tone })}
+          shopPrefix={profile.shopPrefix(ps)}
         />
       )}
 
@@ -324,8 +393,8 @@ export default function App() {
 
       {page === 'weather' && plan && (
         <>
-          {/* 하원 후 내일 탭을 보는 엄마에게 오늘 피드백을 먼저 묻는다 */}
-          {dayIndex === 1 && afterPickup && today && !feedback[today.date] && feedbackCard}
+          {/* 하원(집에 들어온) 후 내일 탭을 볼 때 오늘 피드백을 먼저 묻는다 */}
+          {dayIndex === 1 && afterBack && today && !feedback[today.date] && feedbackCard}
 
           <section className="card hero">
             <p className="headline">{plan.headline}</p>
@@ -350,14 +419,14 @@ export default function App() {
           </section>
 
           <section className="moments" style={{ gridTemplateColumns: `repeat(${moments.length}, 1fr)` }}>
-            {moments.map((m) => (
+            {moments.map((m, i) => (
               <div key={m.key} className={`moment ${m.key}`}>
                 <span className="m-label">{m.label}</span>
-                <span className="m-time">{leavingNow && m.key === 'dropoff' ? '지금' : m.timeText}</span>
+                <span className="m-time">{leavingNow && i === 0 ? '지금' : m.timeText}</span>
                 <span className="m-emoji">{m.weather.emoji}</span>
                 <span className="m-temp">{m.temp}°</span>
                 <span className="m-feels">체감 {m.feels}°</span>
-                {/* 초속 5m부터는 아이가 춥게 느낄 만큼 세다 (바람막이 추천 기준과 같음) */}
+                {/* 초속 5m부터는 춥게 느낄 만큼 세다 (바람막이 추천 기준과 같음) */}
                 <span className={`m-wind ${m.wind >= 5 ? 'strong' : ''}`}>
                   💨 {m.wind}m/s{m.wind >= 5 && ' 강함'}
                 </span>
@@ -365,19 +434,21 @@ export default function App() {
             ))}
           </section>
 
-          {/* 엄마의 걱정(덥지 않을까? 춥지 않을까?)에 한 줄씩 + 저녁 늦게·놀이터 안내 */}
-          <section className="card tips">
-            {notes.map((t) => (
-              <p key={t.text} className="tip">
-                <span className="tip-emoji">{t.emoji}</span>
-                <span>{t.text}</span>
-              </p>
-            ))}
-          </section>
+          {/* 아이: 엄마의 걱정(덥지 않을까? 춥지 않을까?)에 한 줄씩 / 나: 평소와 다른 날에만 한 줄 팁 */}
+          {notes.length > 0 && (
+            <section className="card tips">
+              {notes.map((t) => (
+                <p key={t.text} className="tip">
+                  <span className="tip-emoji">{t.emoji}</span>
+                  <span>{t.text}</span>
+                </p>
+              ))}
+            </section>
+          )}
 
           {plan.items.length > 0 && (
             <section className="card">
-              <h2>챙겨주세요</h2>
+              <h2>{profile.itemsTitle}</h2>
               <ul className="items">
                 {plan.items.map((it) => (
                   <li key={it.label}>

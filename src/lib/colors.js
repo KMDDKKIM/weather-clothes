@@ -66,6 +66,11 @@ const PALETTES = {
     reason: '겨울엔 포근한 색',
     pairs: [pair('cream', 'brown'), pair('burgundy', 'charcoal'), pair('ivory', 'navy'), pair('gray', 'black')],
   },
+  // 어른은 눈에 띄는 노랑·주황 대신 무난한 색
+  adultRain: {
+    reason: '비 오는 날엔 젖어도 티 덜 나는 어두운 하의, 기분 전환되는 밝은 상의',
+    pairs: [pair('white', 'navy'), pair('skyblue', 'charcoal'), pair('mustard', 'black'), pair('ivory', 'denim')],
+  },
 }
 
 function season(month) {
@@ -77,11 +82,11 @@ function season(month) {
 
 /**
  * @param date    'YYYY-MM-DD'
- * @param weather { rainy, peakEff }
+ * @param weather { rainy, peakEff, adult }  adult: 어른 옷 (비 오는 날 색이 다르다)
  * @returns { reason, pairs: [{ top, bottom }] }  2쌍
  */
-export function colorCombos(date, { rainy, peakEff }) {
-  const key = rainy ? 'rain' : peakEff >= 26 ? 'hot' : peakEff < 8 ? 'cold' : season(Number(date.slice(5, 7)))
+export function colorCombos(date, { rainy, peakEff, adult = false }) {
+  const key = rainy ? (adult ? 'adultRain' : 'rain') :peakEff >= 26 ? 'hot' : peakEff < 8 ? 'cold' : season(Number(date.slice(5, 7)))
   const { reason, pairs } = PALETTES[key]
   // 날짜마다 다른 2쌍이 나오도록
   const start = Number(date.slice(8, 10)) % pairs.length
@@ -222,18 +227,26 @@ export const BOTTOM_COLORS = [
   'denim', 'lightdenim', 'black', 'navy', 'charcoal', 'gray', 'beige', 'ivory', 'white', 'khaki', 'brown',
   'lightpink', 'pink', 'lavender', 'skyblue', 'mint', 'red', 'yellow',
 ].map(color)
+// 어른 하의 색: 어른 옷에 흔한 무난한 색 위주, 밝은 색은 몇 가지만 뒤에
+export const ADULT_BOTTOM_COLORS = [
+  'denim', 'lightdenim', 'black', 'navy', 'charcoal', 'gray', 'beige', 'ivory', 'white', 'khaki', 'brown',
+  'lightpink', 'skyblue',
+].map(color)
 
 /**
- * @param side 'top' | 'bottom'  고른 색이 상의인지 하의인지
- * @param id   고른 색 id
- * @param tone 아이 톤. 하의로 찾을 때(결과가 상의일 때) 톤에 맞는 상의를 앞으로
+ * @param side    'top' | 'bottom'  고른 색이 상의인지 하의인지
+ * @param id      고른 색 id
+ * @param tone    톤. 하의로 찾을 때(결과가 상의일 때) 톤에 맞는 상의를 앞으로
+ * @param bottoms 상의로 찾을 때 이 하의 색만 (어른은 ADULT_BOTTOM_COLORS, 없으면 표 전부)
  * @returns [{ color, type }]  반대쪽에 어울리는 색 (베스트 → 기본 → 톤온톤 → 피할 조합 순)
  */
-export function matchesFor(side, id, tone = 'unknown') {
+export function matchesFor(side, id, tone = 'unknown', bottoms = null) {
   const order = Object.keys(MATCH_TYPES)
   const list =
     side === 'top'
-      ? (MATCHES[id] ?? []).map(([other, type]) => ({ color: color(other), type: displayType(id, other, type) }))
+      ? (MATCHES[id] ?? [])
+          .filter(([other]) => !bottoms || bottoms.some((c) => c.id === other))
+          .map(([other, type]) => ({ color: color(other), type: displayType(id, other, type) }))
       : Object.entries(MATCHES).flatMap(([top, list]) =>
           list
             .filter(([bottom]) => bottom === id)

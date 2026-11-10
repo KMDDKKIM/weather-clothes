@@ -6,7 +6,8 @@
 // - when 'commute' → 등·하원(겉옷·내복) 보정만
 // - 모름(null)     → 둘 다
 
-const STORAGE_KEY = 'weather-clothes-feedback'
+// 프로필마다 따로 저장 (아이: 예전 키 그대로, 나: 'weather-clothes-me-feedback')
+export const FEEDBACK_KEYS = { kid: 'weather-clothes-feedback', me: 'weather-clothes-me-feedback' }
 const STEP = 0.5 // 피드백 1번당 보정 폭
 const LIMIT = 3 // 보정 최대치
 const RECENT = 14 // 최근 며칠 피드백만 반영
@@ -22,17 +23,17 @@ export const WHENS = {
   day: '원에서 낮에',
 }
 
-export function loadFeedback() {
+export function loadFeedback(key = FEEDBACK_KEYS.kid) {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY)) ?? {}
+    return JSON.parse(localStorage.getItem(key)) ?? {}
   } catch {
     return {}
   }
 }
 
-export function saveFeedback(log) {
+export function saveFeedback(log, key = FEEDBACK_KEYS.kid) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(log))
+    localStorage.setItem(key, JSON.stringify(log))
   } catch {
     // 저장 실패해도 앱은 동작
   }
@@ -53,13 +54,13 @@ export function learnedAdjust(log) {
   return { peak: clamp(peak), cold: clamp(cold) }
 }
 
-/** 보정값을 엄마가 읽을 수 있는 문장으로 */
-export function describeAdjust({ peak, cold }) {
+/** 보정값을 읽을 수 있는 문장으로. commuteLabel: 오가는 때를 부르는 말 (아이 '등·하원 때', 나 '오갈 때') */
+export function describeAdjust({ peak, cold }, commuteLabel = '등·하원 때') {
   const part = (label, v) => {
     if (v === 0) return null
     const level = Math.abs(v) >= 2 ? '' : '조금 '
     return `${label}엔 ${level}${v > 0 ? '가볍게' : '따뜻하게'}`
   }
-  const parts = [part('낮', peak), part('등·하원 때', cold)].filter(Boolean)
+  const parts = [part('낮', peak), part(commuteLabel, cold)].filter(Boolean)
   return parts.length ? `${parts.join(', ')} 추천하고 있어요` : null
 }

@@ -4,9 +4,10 @@ import { RATINGS, WHENS } from './lib/feedback.js'
  * 오늘 옷차림 피드백 카드
  * @param entry     오늘 남긴 피드백 (없으면 undefined)
  * @param onChange  (entry | null) => void   null이면 오늘 피드백 삭제
- * @param beforePickup  하원 전이면 안내 문구를 바꾼다
+ * @param hint      버튼 아래 안내 문구 (프로필마다 다르다)
+ * @param whens     "언제 추웠나요?" 선택지 (아이: 등·하원 때 / 나: 오갈 때)
  */
-export default function FeedbackCard({ entry, onChange, beforePickup }) {
+export default function FeedbackCard({ entry, onChange, hint, whens = WHENS }) {
   const rate = (rating) => onChange({ rating, when: null })
   const setWhen = (when) => onChange({ ...entry, when })
 
@@ -22,9 +23,7 @@ export default function FeedbackCard({ entry, onChange, beforePickup }) {
             </button>
           ))}
         </div>
-        <p className="hint">
-          {beforePickup ? '하원 후에 알려주시면' : '알려주시면'} 우리 아이에게 맞게 다음 추천을 조정할게요.
-        </p>
+        <p className="hint">{hint}</p>
       </section>
     )
   }
@@ -48,7 +47,7 @@ export default function FeedbackCard({ entry, onChange, beforePickup }) {
         <div className="when">
           <span className="when-label">언제 {entry.rating === 'cold' ? '추웠나요' : '더웠나요'}?</span>
           <div className="chips">
-            {Object.entries(WHENS).map(([key, text]) => (
+            {Object.entries(whens).map(([key, text]) => (
               <button
                 key={key}
                 className={`chip ${entry.when === key ? 'on' : ''}`}

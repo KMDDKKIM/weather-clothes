@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef, useState } from 'react'
-import { TOP_COLORS, BOTTOM_COLORS, MATCH_TYPES, TONES, matchesFor, suitsTone } from './lib/colors.js'
+import { TOP_COLORS, MATCH_TYPES, TONES, matchesFor, suitsTone } from './lib/colors.js'
 import { shopLinks } from './lib/shop.js'
 
 // 조합 종류마다 최대 몇 개까지 보여줄지
@@ -12,10 +12,12 @@ const SIDES = {
 
 /**
  * @param plan    선택된 날의 날씨 plan. 쇼핑 검색어에 오늘 맞는 옷 종류를 넣는 데 쓴다.
- * @param tone    아이 톤 ('unknown' | 'warm' | 'cool')
- * @param onTone  톤 변경
+ * @param profile    아이 / 나 (profiles.js): 하의 색 목록, 문구
+ * @param tone       톤 ('unknown' | 'warm' | 'cool')
+ * @param onTone     톤 변경
+ * @param shopPrefix 쇼핑 검색어 앞말 ('아동 ', '여성 ' …)
  */
-export default function ColorPage({ plan, dayLabel, tone, onTone }) {
+export default function ColorPage({ plan, dayLabel, profile, tone, onTone, shopPrefix }) {
   const [side, setSide] = useState('top')
   const [selectedId, setSelectedId] = useState(null)
   const [pickId, setPickId] = useState(null) // 결과 중 크게 볼 조합 (반대쪽 색 id)
@@ -27,9 +29,9 @@ export default function ColorPage({ plan, dayLabel, tone, onTone }) {
     if (selectedId) resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }, [selectedId, side])
 
-  const palette = side === 'top' ? TOP_COLORS : BOTTOM_COLORS
+  const palette = side === 'top' ? TOP_COLORS : profile.bottoms
   const selected = palette.find((c) => c.id === selectedId)
-  const matches = selected ? matchesFor(side, selected.id, tone) : []
+  const matches = selected ? matchesFor(side, selected.id, tone, profile.bottomFilter) : []
   // 상의 색에만 톤 표시
   const sparkle = (category, id) => category === 'top' && suitsTone(tone, id)
   const other = SIDES[side].other
@@ -82,7 +84,7 @@ export default function ColorPage({ plan, dayLabel, tone, onTone }) {
 
       <section className="card">
         <div className="tone-row">
-          <span className="tone-label">우리 아이 톤</span>
+          <span className="tone-label">{profile.toneLabel}</span>
           <div className="chips">
             {Object.entries(TONES).map(([key, { label }]) => (
               <button key={key} className={`chip ${tone === key ? 'on' : ''}`} onClick={() => onTone(key)}>
@@ -102,7 +104,9 @@ export default function ColorPage({ plan, dayLabel, tone, onTone }) {
             </button>
           ))}
         </div>
-        <p className="hint">아이가 입을 {SIDES[side].label} 색을 골라주세요.</p>
+        <p className="hint">
+          {profile.wearer && `${profile.wearer} `}입을 {SIDES[side].label} 색을 골라주세요.
+        </p>
         <div className="palette">
           {palette.map((c) => (
             <button
@@ -133,6 +137,7 @@ export default function ColorPage({ plan, dayLabel, tone, onTone }) {
               type={picked.type}
               topItems={itemNames('top')}
               bottomItems={itemNames('bottom')}
+              shopPrefix={shopPrefix}
             />
           )}
 
@@ -174,7 +179,7 @@ export default function ColorPage({ plan, dayLabel, tone, onTone }) {
 }
 
 // 고른 조합을 크게 보여주고, 그 색 옷이 없을 때 쇼핑으로 연결
-const ComboDetail = forwardRef(function ComboDetail({ top, bottom, type, topItems, bottomItems }, ref) {
+const ComboDetail = forwardRef(function ComboDetail({ top, bottom, type, topItems, bottomItems, shopPrefix }, ref) {
   const { label, reason } = MATCH_TYPES[type]
   return (
     <div ref={ref} className={`combo-detail ${type}`}>
@@ -188,8 +193,8 @@ const ComboDetail = forwardRef(function ComboDetail({ top, bottom, type, topItem
         {type !== 'avoid' && (
           <div className="combo-shop">
             <span className="shop-title">🛍️ 이 색 옷이 없다면?</span>
-            <ShopLink link={shopLinks(top.name, topItems)[0]} />
-            <ShopLink link={shopLinks(bottom.name, bottomItems)[0]} />
+            <ShopLink link={shopLinks(top.name, topItems, shopPrefix)[0]} />
+            <ShopLink link={shopLinks(bottom.name, bottomItems, shopPrefix)[0]} />
           </div>
         )}
       </div>

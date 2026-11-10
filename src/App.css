@@ -375,6 +375,42 @@ h2 {
   word-break: keep-all;
 }
 
+/* 누구 옷을 볼지: 우리 아이 / 나 */
+.profiles {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  background: var(--accent-soft);
+  border-radius: 999px;
+}
+
+.profile {
+  flex: 1;
+  border: none;
+  background: none;
+  border-radius: 999px;
+  padding: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.profile.on {
+  background: var(--card);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}
+
+/* 설정: 동네 아래 프로필별 설정 제목 */
+.settings-for {
+  margin: 4px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 14px;
+  font-weight: 700;
+}
+
 /* 오늘/내일 탭 */
 .tabs {
   display: flex;
