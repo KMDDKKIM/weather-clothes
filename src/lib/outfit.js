@@ -63,11 +63,11 @@ const WORDS = {
 
 /**
  * @param day   fetchWeather()가 돌려준 하루치 (자정을 넘는 외출이면 outing.js의 joinDays로 이어 붙인 것)
- * @param opts    { dropoff: '08:30', pickup: '16:00', sensitivity: 'normal', mode: 'school' | 'outing' }
+ * @param opts    { dropoff: '08:30', pickup: '16:00', sensitivity: 'normal', mode: 'school' | 'outing', gender: 'any' }
  *                dropoff·pickup은 소수 시간(17.5)도 된다 ('지금' 탭). mode는 말투 (outing.js)
  * @param adjust  피드백으로 학습한 보정값 { peak, cold } (°C, feedback.js)
  */
-export function buildPlan(day, { dropoff, pickup, sensitivity = 'normal', mode = 'school' }, adjust = { peak: 0, cold: 0 }) {
+export function buildPlan(day, { dropoff, pickup, sensitivity = 'normal', mode = 'school', gender = 'any' }, adjust = { peak: 0, cold: 0 }) {
   const offset = SENSITIVITY[sensitivity]?.offset ?? 0
   const start = typeof dropoff === 'number' ? dropoff : timeToHour(dropoff)
   const end = typeof pickup === 'number' ? pickup : timeToHour(pickup)
@@ -106,7 +106,7 @@ export function buildPlan(day, { dropoff, pickup, sensitivity = 'normal', mode =
   const pieces = {}
   for (const [category, { basis }] of Object.entries(CATEGORIES)) {
     const t = basis === 'peak' ? peakEff : coldEff
-    pieces[category] = optionsFor(category, t, { windy: category === 'outer' && commuteWind >= 5 })
+    pieces[category] = optionsFor(category, t, { windy: category === 'outer' && commuteWind >= 5, gender })
   }
   const outfit = {
     top: pieces.top[0],

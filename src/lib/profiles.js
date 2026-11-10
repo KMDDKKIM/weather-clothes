@@ -21,7 +21,7 @@ export const PROFILES = {
     tab: '🧒 우리 아이',
     title: '오늘 뭐 입혀?',
     // 예전 설정(아이 시간·톤)은 settings 맨 바깥에 있어서 그대로 둔다 (App.jsx)
-    defaults: { dropoff: '08:30', pickup: '16:00', sensitivity: 'normal', tone: 'unknown' },
+    defaults: { dropoff: '08:30', pickup: '16:00', sensitivity: 'normal', gender: 'any', tone: 'unknown' },
     leaveKey: 'dropoff',
     backKey: 'pickup',
     timeLabels: { dropoff: '등원 시간', pickup: '하원 시간' },
@@ -29,6 +29,8 @@ export const PROFILES = {
     sensitivityLabel: '우리 아이는',
     SENSITIVITY: kidPlan.SENSITIVITY,
     CATEGORIES: kidClothes.CATEGORIES,
+    GENDERS: kidClothes.GENDERS,
+    genderLabel: '우리 아이 옷',
     innerwearLabels: ['내복', '내복 (추위 타면)'],
     itemsTitle: '챙겨주세요',
     feedbackKey: FEEDBACK_KEYS.kid,
@@ -40,7 +42,7 @@ export const PROFILES = {
     wearer: '아이가',
     bottoms: BOTTOM_COLORS,
     bottomFilter: null, // 아이는 조합표의 하의 색을 전부
-    shopPrefix: () => '아동 ',
+    shopPrefix: (s) => kidClothes.GENDERS[s.gender]?.shop ?? '아동 ',
     buildPlan: kidPlan.buildPlan,
     // '지금': 평일 하원 전엔 등원 기준, 하원 후·주말엔 지금 나가는 기준
     nowOpts: (now, s) => ({ ...s, ...kidOuting.nowOuting(now, s) }),
@@ -67,6 +69,7 @@ export const PROFILES = {
     SENSITIVITY: adultPlan.SENSITIVITY,
     CATEGORIES: adultClothes.CATEGORIES,
     GENDERS: adultClothes.GENDERS,
+    genderLabel: '추천할 옷',
     innerwearLabels: ['발열 내의', '발열 내의 (추위 타면)'],
     itemsTitle: '챙기세요',
     feedbackKey: FEEDBACK_KEYS.me,

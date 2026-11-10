@@ -315,7 +315,7 @@ export default function App() {
           ))}
           {profile.GENDERS && (
             <div className="field">
-              <span>추천할 옷</span>
+              <span>{profile.genderLabel}</span>
               <div className="chips">
                 {Object.entries(profile.GENDERS).map(([key, { label }]) => (
                   <button

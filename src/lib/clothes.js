@@ -5,6 +5,8 @@
 //   - 겉옷·내복: 오갈 때 필요하니 "등·하원 중 추운 시간 체감온도"로 판단
 // ideal: 가장 잘 맞는 온도. 여러 옷이 범위에 들면 ideal에 가까운 순으로 추천
 // everyday: 평소 많이 입히는 옷. 범위에 들면 이 온도(°C)만큼 더 잘 맞는 것으로 보고 앞에 둔다
+// gender: 'f' 여아 옷, 'm' 남아 옷, 없으면 공용 (설정 "우리 아이 옷")
+// dress: 원피스. 하의가 따로 필요 없어서 1순위로는 두지 않고 "또는 ~도 괜찮아요"에만 보여준다
 //
 // 원 안은 냉난방이 되므로 상의·하의는 기모 이상으로 두꺼워지지 않게 하고,
 // 추위는 겉옷과 내복으로 해결한다.
@@ -22,6 +24,13 @@ export const CATEGORIES = {
   innerwear: { label: '내복', basis: 'cold' },
 }
 
+// 설정 '우리 아이 옷'. 상관없음이면 공용 옷을 앞에, 여아 옷은 '또는 ~도 괜찮아요'로
+export const GENDERS = {
+  any: { label: '상관없음', shop: '아동 ' },
+  f: { label: '여아', shop: '여아 ' },
+  m: { label: '남아', shop: '남아 ' },
+}
+
 export const CLOTHES = [
   // 상의
   { id: 'sleeveless', category: 'top', name: '민소매', emoji: '🎽', range: [28, 45], ideal: 32 },
@@ -36,6 +45,9 @@ export const CLOTHES = [
   { id: 'fleece-sweat', category: 'top', name: '기모 맨투맨', emoji: '🧶', range: [-30, 11], ideal: 5 },
   { id: 'fleece-hoodie', category: 'top', name: '기모 후드티', emoji: '🧶', range: [-30, 11], ideal: 5.5 },
   { id: 'fleece-turtle', category: 'top', name: '기모 터틀넥', emoji: '🧶', range: [-30, 6], ideal: 0 },
+  { id: 'summer-dress', category: 'top', name: '반팔 원피스', emoji: '👗', range: [23, 45], ideal: 27, gender: 'f', dress: true },
+  { id: 'long-dress', category: 'top', name: '긴팔 원피스', emoji: '👗', range: [16, 24], ideal: 20, gender: 'f', dress: true },
+  { id: 'fleece-dress', category: 'top', name: '기모 원피스', emoji: '👗', range: [-30, 12], ideal: 6, gender: 'f', dress: true },
 
   // 하의
   { id: 'shorts', category: 'bottom', name: '반바지', emoji: '🩳', range: [25, 45], ideal: 29 },
@@ -48,6 +60,8 @@ export const CLOTHES = [
   { id: 'fleece-jeans', category: 'bottom', name: '기모 청바지', emoji: '👖', range: [-5, 11], ideal: 6, everyday: 2 },
   { id: 'fleece-leggings', category: 'bottom', name: '기모 레깅스', emoji: '👖', range: [-30, 12], ideal: 7 },
   { id: 'fleece-pants', category: 'bottom', name: '기모 바지', emoji: '👖', range: [-30, 10], ideal: 3 },
+  { id: 'skirt', category: 'bottom', name: '치마', emoji: '👗', range: [23, 45], ideal: 27, gender: 'f' },
+  { id: 'skirt-leggings', category: 'bottom', name: '레깅스에 치마', emoji: '👗', range: [12, 22], ideal: 17, gender: 'f' },
 
   // 겉옷 (none = 겉옷 없음)
   { id: 'no-outer', category: 'outer', name: '겉옷 없이', emoji: '🙅', range: [20, 45], ideal: 25 },
@@ -69,12 +83,19 @@ export const CLOTHES = [
 /**
  * 해당 카테고리에서 온도 t에 맞는 옷들을 잘 맞는 순으로 돌려준다.
  * 범위에 드는 옷이 없으면 가장 가까운 옷 하나를 돌려준다.
+ * @param gender 'any' | 'f' | 'm'  고른 성별 옷 + 공용 옷만 (any면 전부)
  */
-export function optionsFor(category, t, { windy = false } = {}) {
-  const items = CLOTHES.filter((c) => c.category === category)
+export function optionsFor(category, t, { windy = false, gender = 'any' } = {}) {
+  const items = CLOTHES.filter((c) => c.category === category && (gender === 'any' || !c.gender || c.gender === gender))
   const fit = items.filter((c) => t >= c.range[0] && t <= c.range[1])
-  // 바람이 강하면 바람을 막아주는 겉옷을, 평소 많이 입는 옷은 늘 앞으로
-  const score = (c) => Math.abs(t - c.ideal) - (windy && c.windproof ? 3 : 0) - (c.everyday ?? 0)
+  // 바람이 강하면 바람을 막아주는 겉옷을, 평소 많이 입는 옷은 늘 앞으로, 원피스는 뒤로.
+  // '상관없음'에서는 공용 옷을 먼저, 성별 옷은 "또는 ~도 괜찮아요"로
+  const score = (c) =>
+    Math.abs(t - c.ideal) -
+    (windy && c.windproof ? 3 : 0) -
+    (c.everyday ?? 0) +
+    (c.dress ? 100 : 0) +
+    (gender === 'any' && c.gender ? 5 : 0)
   if (fit.length) return fit.sort((a, b) => score(a) - score(b))
 
   const distance = (c) => Math.min(Math.abs(t - c.range[0]), Math.abs(t - c.range[1]))
