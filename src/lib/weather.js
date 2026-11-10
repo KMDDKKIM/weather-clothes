@@ -8,7 +8,7 @@
 // 결과 형태는 어느 쪽이든 같다 (fetchWeather 설명 참고).
 
 // 중계 서버 주소 (없으면 Open-Meteo만)
-const PROXY = import.meta.env.VITE_WEATHER_PROXY ?? 'https://weather-clothes-api.PLACEHOLDER.workers.dev'
+const PROXY = import.meta.env.VITE_WEATHER_PROXY ?? 'https://weather-clothes-api.kmddkkim.workers.dev'
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast'
 const OPEN_METEO_AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality'
 
@@ -20,7 +20,7 @@ const OPEN_METEO_AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-qualit
  *   cal: 옷을 고를 때 체감온도에 더할 보정값 (아래 CALIBRATION, Open-Meteo면 0)
  */
 export async function fetchWeather({ lat, lon }) {
-  if (PROXY && !PROXY.includes('PLACEHOLDER')) {
+  if (PROXY) {
     try {
       return await fetchKorea({ lat, lon })
     } catch (e) {
