@@ -2,3 +2,7 @@ node_modules
 dist
 dist-app
 .claude
+
+# 공공데이터포털 인증키 (로컬 전용)
+.env.local
+*.local

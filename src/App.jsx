@@ -477,7 +477,10 @@ export default function App() {
       )}
 
       <footer>
-        날씨 데이터: <a href="https://open-meteo.com/">Open-Meteo.com</a> ·{' '}
+        {/* 공공누리·에어코리아 이용조건: 출처 표시 */}
+        날씨: <a href="https://www.weather.go.kr/">기상청</a> · 미세먼지:{' '}
+        <a href="https://www.airkorea.or.kr/">에어코리아</a>(한국환경공단, 실시간 자료는 미확정) · 자외선:{' '}
+        <a href="https://open-meteo.com/">Open-Meteo</a> ·{' '}
         <a href={PRIVACY_URL}>개인정보처리방침</a>
       </footer>
     </div>

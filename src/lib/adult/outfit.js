@@ -84,8 +84,10 @@ export function buildPlan(day, { leave, back, sensitivity = 'normal', gender = '
   )
   const coldW = leaveW.feels <= backW.feels ? { ...leaveW, label: '나갈 때' } : { ...backW, label: '들어올 때' }
 
-  const peakEff = peakW.feels + offset + adjust.peak
-  const coldEff = coldW.feels + offset + adjust.cold
+  // cal: 기상청 체감온도를 옷 기준에 맞추는 월별 보정 (weather.js)
+  const cal = day.cal ?? { peak: 0, cold: 0 }
+  const peakEff = peakW.feels + offset + adjust.peak + cal.peak
+  const coldEff = coldW.feels + offset + adjust.cold + cal.cold
 
   const swing = peakW.feels - coldW.feels
   const commuteWind = Math.max(leaveW.wind, backW.wind)
