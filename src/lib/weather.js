@@ -3,12 +3,12 @@
 // - 체감온도: 기상청 공식으로 계산 (겨울: 기온·바람 / 여름: 기온·습도)
 // - 미세먼지: 에어코리아 (오늘 = 가까운 측정소 실시간, 내일 = 시도별 예보 등급)
 // - 자외선: 기상청 단기예보에 없어서 Open-Meteo
-// 기상청을 못 불러오면(인증키 없음·트래픽 초과 등) 예전처럼 Open-Meteo로 대신한다.
+// 공공데이터포털은 중계 서버(worker/, Cloudflare Workers)를 거친다. 인증키는 그 서버에만 있고 앱엔 없다.
+// 기상청을 못 불러오면(서버 오류·트래픽 초과 등) 예전처럼 Open-Meteo로 대신한다.
 // 결과 형태는 어느 쪽이든 같다 (fetchWeather 설명 참고).
 
-const KEY = import.meta.env.VITE_DATA_GO_KR_KEY
-const KMA_URL = 'https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst'
-const AIR_BASE = 'https://apis.data.go.kr/B552584'
+// 중계 서버 주소 (없으면 Open-Meteo만)
+const PROXY = import.meta.env.VITE_WEATHER_PROXY ?? 'https://weather-clothes-api.PLACEHOLDER.workers.dev'
 const OPEN_METEO_URL = 'https://api.open-meteo.com/v1/forecast'
 const OPEN_METEO_AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-quality'
 
@@ -20,7 +20,7 @@ const OPEN_METEO_AIR_URL = 'https://air-quality-api.open-meteo.com/v1/air-qualit
  *   cal: 옷을 고를 때 체감온도에 더할 보정값 (아래 CALIBRATION, Open-Meteo면 0)
  */
 export async function fetchWeather({ lat, lon }) {
-  if (KEY) {
+  if (PROXY && !PROXY.includes('PLACEHOLDER')) {
     try {
       return await fetchKorea({ lat, lon })
     } catch (e) {
@@ -105,7 +105,6 @@ async function kmaCall(nx, ny, base) {
   const cached = cacheGet(cacheKey)
   if (cached) return cached
   const params = new URLSearchParams({
-    serviceKey: KEY,
     pageNo: '1',
     numOfRows: '1000',
     dataType: 'JSON',
@@ -114,7 +113,7 @@ async function kmaCall(nx, ny, base) {
     nx: String(nx),
     ny: String(ny),
   })
-  const res = await fetch(`${KMA_URL}?${params}`)
+  const res = await fetch(`${PROXY}/kma/forecast?${params}`)
   if (!res.ok) throw new Error(`기상청 ${res.status}`)
   const json = await res.json()
   const { resultCode, resultMsg } = json.response?.header ?? {}
@@ -254,7 +253,7 @@ async function nearestStation(lat, lon) {
   const cached = cacheGet(cacheKey)
   if (cached) return cached
   const { x, y } = toTM(lat, lon)
-  const json = await airCall('MsrstnInfoInqireSvc/getNearbyMsrstnList', { tmX: x.toFixed(1), tmY: y.toFixed(1), ver: '1.1' })
+  const json = await airCall('nearby', { tmX: x.toFixed(1), tmY: y.toFixed(1), ver: '1.1' })
   const first = json.response.body.items[0]
   if (!first) throw new Error('가까운 측정소가 없어요')
   const station = { name: first.stationName, addr: first.addr }
@@ -266,7 +265,7 @@ async function stationNow(name) {
   const cacheKey = `air-now:${name}`
   const cached = cacheGet(cacheKey)
   if (cached) return cached
-  const json = await airCall('ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty', {
+  const json = await airCall('now', {
     stationName: name,
     dataTerm: 'DAILY',
     numOfRows: '3',
@@ -290,7 +289,7 @@ async function dustForecast(today) {
   if (cached) return cached
   const result = {}
   for (const code of ['PM10', 'PM25']) {
-    const json = await airCall('ArpltnInforInqireSvc/getMinuDustFrcstDspth', {
+    const json = await airCall('forecast', {
       searchDate: today,
       InformCode: code,
       numOfRows: '100',
@@ -309,9 +308,10 @@ async function dustForecast(today) {
   return result
 }
 
-async function airCall(path, params) {
-  const query = new URLSearchParams({ serviceKey: KEY, returnType: 'json', pageNo: '1', ...params })
-  const res = await fetch(`${AIR_BASE}/${path}?${query}`)
+// name: 'nearby' 가까운 측정소 · 'now' 실시간 측정 · 'forecast' 예보 (중계 서버 주소 /air/…)
+async function airCall(name, params) {
+  const query = new URLSearchParams({ returnType: 'json', pageNo: '1', ...params })
+  const res = await fetch(`${PROXY}/air/${name}?${query}`)
   if (!res.ok) throw new Error(`에어코리아 ${res.status}`)
   const json = await res.json()
   if (!json.response?.body) throw new Error('에어코리아 응답 오류')

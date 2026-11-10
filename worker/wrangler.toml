@@ -1,0 +1,6 @@
+# 공공데이터포털 중계 서버 설정 (Cloudflare Workers)
+# 배포: worker 폴더에서  npx wrangler deploy
+# 인증키(비밀값) 넣기:     npx wrangler secret put DATA_GO_KR_KEY
+name = "weather-clothes-api"
+main = "src/index.js"
+compatibility_date = "2026-10-01"

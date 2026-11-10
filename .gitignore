@@ -6,3 +6,7 @@ dist-app
 # 공공데이터포털 인증키 (로컬 전용)
 .env.local
 *.local
+
+# 중계 서버 로컬 테스트용 비밀값
+worker/.dev.vars
+worker/.wrangler/
