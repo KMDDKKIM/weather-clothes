@@ -63,7 +63,7 @@
 |---|---|---|
 | 앱 아이콘 | 512×512 PNG | ✅ `public/pwa-512.png` |
 | 그래픽 이미지 | 1024×500 PNG/JPG | ✅ `store/feature-graphic.png` (원본: `feature-graphic.html`) |
-| 휴대전화 스크린샷 | 2~8장, 세로, 긴 쪽이 짧은 쪽의 2배 이하 | ✅ `store/screenshots/` 4장 (1080×2160) |
+| 휴대전화 스크린샷 | 2~8장, 9:16 비율 (2026-11 기준) | ✅ `store/screenshots/` 5장 (1080×1920), 플레이 콘솔에 업로드됨 |
 
 ## 5. 앱 콘텐츠 설문 (답변 초안)
 
